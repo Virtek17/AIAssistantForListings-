@@ -10,6 +10,8 @@ interface AdsControlPanelProps {
   onSearchChange: (value: string) => void;
   sortBy: string;
   onSortChange: (value: string) => void;
+  viewMode: "grid" | "col";
+  onViewModeChange: (mode: "grid" | "col") => void;
 }
 
 export const AdsControlPanel = ({
@@ -17,6 +19,8 @@ export const AdsControlPanel = ({
   onSearchChange,
   sortBy,
   onSortChange,
+  viewMode,
+  onViewModeChange,
 }: AdsControlPanelProps) => {
   return (
     <div
@@ -60,15 +64,33 @@ export const AdsControlPanel = ({
           {/* TODO: убрать ховер */}
           <Button
             type="text"
-            icon={<AppstoreOutlined style={{ color: "#1890ff" }} />}
+            icon={
+              <AppstoreOutlined
+                style={
+                  viewMode == "grid"
+                    ? { color: "#1890ff" }
+                    : { color: "rgba(0, 0, 0, 0.85)" }
+                }
+              />
+            }
             style={{
               borderRadius: 0,
               borderRight: "2px solid #ffffff",
             }}
+            onClick={() => onViewModeChange("grid")}
           />
           <Button
             type="text"
-            icon={<BarsOutlined style={{ color: "rgba(0, 0, 0, 0.85)" }} />}
+            icon={
+              <BarsOutlined
+                style={
+                  viewMode == "col"
+                    ? { color: "#1890ff" }
+                    : { color: "rgba(0, 0, 0, 0.85)" }
+                }
+              />
+            }
+            onClick={() => onViewModeChange("col")}
           />
         </div>
 
@@ -87,6 +109,8 @@ export const AdsControlPanel = ({
             { value: "createdAt_asc", label: "Сначала старые" },
             { value: "title_asc", label: "По названию (А-Я)" },
             { value: "title_desc", label: "По названию (Я-А)" },
+            { value: "price_desc", label: "Сначала дороже" },
+            { value: "price_asc", label: "Сначала дешевле" },
           ]}
         />
       </div>

@@ -1,5 +1,4 @@
 import {
-  Divider,
   Form,
   Input,
   InputNumber,
@@ -8,159 +7,65 @@ import {
   Typography,
   Space,
   Result,
-  Spin,
-  message,
-  Modal,
+  Popover,
 } from "antd";
-import { BulbOutlined } from "@ant-design/icons";
 import { MainLayout } from "../components/MainLayout";
-import { CategoryFields } from "./CategoryFields";
-import { useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAdById, updateAd } from "../api/index.ts";
-import { useEffect, useRef, useState } from "react";
-import { useAdDraftStore } from "../store/useAdDraftStore.ts";
+import { AiButton } from "../components/AiButton";
+import { BackButton } from "../components/BackButton";
 import {
-  FindPriceWithAI,
-  improveDescriptionWithAI,
-} from "../services/aiService.ts";
+  CategoryFieldsAuto,
+  CategoryFieldsElectronics,
+  CategoryFieldsRealEstate,
+} from "../features/ad-edit/components/CategoryFields.tsx";
+import { useNavigate, useParams } from "react-router-dom";
+
+import { CATEGORIES } from "../utils/constants.ts";
+import { useAdEdit } from "../features/ad-edit/hooks/useAdEdit.ts";
+import { AiResultPopover } from "../features/ad-edit/components/AiResultPopover.tsx";
+import { AdEditSkeleton } from "../features/ad-edit/components/AdEditSkeleton.tsx";
 
 const { Title } = Typography;
 const { TextArea } = Input;
 
 export const AdEditPage = () => {
   const { id } = useParams<{ id: string }>();
+  const { form, isLoading, isError, mutation, ai, priceAi, actions } =
+    useAdEdit(id!);
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [form] = Form.useForm();
-  const { setDraft, getDraft, clearDraft } = useAdDraftStore();
-  const [messageApi, contextHolder] = message.useMessage();
-  const draftModalShown = useRef(false);
-
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPriceAiLoading, setIsPriceAiLoading] = useState(false);
-
-  useEffect(() => {
-    if (draftModalShown.current) return;
-
-    const savedDraft = getDraft(id!);
-    if (savedDraft) {
-      draftModalShown.current = true;
-      Modal.confirm({
-        title: "Найдено неопубликованное изменение",
-        content: "Восстановить данные из черновика?",
-        okText: "Да",
-        cancelText: "Нет",
-        onOk: () => form.setFieldsValue(savedDraft),
-        onCancel: () => clearDraft(id!),
-      });
-    }
-  }, [id]);
-
-  const mutation = useMutation({
-    mutationFn: (values: any) => updateAd(id!, values),
-    onSuccess: () => {
-      clearDraft(id!);
-      messageApi.success("Объявление успешно обновлено!");
-      queryClient.invalidateQueries({ queryKey: ["ad", id] });
-      navigate(`/ads/${id}`);
-    },
-    onError: (error: any) => {
-      const messageText =
-        error.response?.data?.error || error.message || "Ошибка сети";
-      messageApi.error(`Ошибка: ${messageText}`);
-      console.error("Полная ошибка:", error);
-    },
-  });
-
-  const handleFinish = (values: any) => {
-    mutation.mutate(values);
-  };
-
-  const {
-    data: item,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["ad", id],
-    queryFn: () => getAdById(id!),
-    enabled: !!id,
-  });
-
-  const handleAiClick = async () => {
-    const { title, category, params, description } = form.getFieldsValue();
-    setIsAiLoading(true);
-    try {
-      const suggestion = await improveDescriptionWithAI(
-        title,
-        category,
-        params,
-        description,
-      );
-      setAiSuggestion(suggestion);
-      setIsModalOpen(true);
-    } catch (e) {
-      messageApi.error("Не удалось подключиться к AI");
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-  const handlePriceAiClick = async () => {
-    const { title, category, params, description } = form.getFieldsValue();
-
-    // Небольшая проверка, чтобы ИИ было от чего отталкиваться
-    if (!title) return messageApi.warning("Введите название для оценки");
-
-    setIsPriceAiLoading(true);
-    try {
-      const suggestedPrice = await FindPriceWithAI(
-        title,
-        category,
-        params,
-        description,
-      );
-
-      if (suggestedPrice) {
-        Modal.confirm({
-          title: "Результат оценки AI",
-          content: `Рекомендуемая рыночная цена: ${suggestedPrice.toLocaleString()} ₽. Применить это значение?`,
-          okText: "Применить",
-          cancelText: "Отмена",
-          onOk: () => {
-            form.setFieldValue("price", suggestedPrice);
-            // Важно обновить черновик, так как setFieldValue не триггерит onValuesChange
-            setDraft(id!, form.getFieldsValue());
-          },
-        });
-      }
-    } catch (e) {
-      messageApi.error("Не удалось получить оценку цены");
-    } finally {
-      setIsPriceAiLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (item) {
-      form.setFieldsValue(item);
-    }
-  }, [item, form]);
 
   const category = Form.useWatch("category", form);
+  const descriptionValue = Form.useWatch("description", form);
 
   if (isLoading)
     return (
-      <div style={{ textAlign: "center", padding: 50 }}>
-        <Spin size="large" />
-      </div>
+      <MainLayout>
+        <AdEditSkeleton />
+      </MainLayout>
     );
-  if (isError) return <Result status="error" title="Ошибка загрузки" />;
+  if (isError)
+    return (
+      <MainLayout>
+        <Result
+          status="error"
+          title="Ошибка загрузки"
+          subTitle="Не удалось загрузить данные объявления"
+          extra={
+            <BackButton
+              label="Вернуться к списку"
+              onClick={() => navigate("/ads")}
+            />
+          }
+        />
+      </MainLayout>
+    );
 
   return (
     <MainLayout>
-      {contextHolder}
+      <BackButton
+        onClick={() => navigate(`/ads/${id}`)}
+        style={{ marginBottom: 24 }}
+      />
+
       <Title level={2} style={{ marginBottom: 32 }}>
         Редактирование объявления
       </Title>
@@ -168,150 +73,162 @@ export const AdEditPage = () => {
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ category: "electronics" }}
         style={{ maxWidth: 800 }}
-        onFinish={handleFinish}
-        onValuesChange={(_, allValues) => {
-          setDraft(id!, allValues);
-        }}
+        onFinish={(vals) => mutation.mutate(vals)}
+        onValuesChange={(_, all) => actions.setDraft(all)}
       >
-        {/* Категория */}
         <Form.Item label="Категория" name="category">
           <Select
-            style={{ maxWidth: 300 }}
             onChange={() => form.setFieldValue("params", {})}
+            style={{ maxWidth: 300 }}
           >
-            <Select.Option value="electronics">Электроника</Select.Option>
-            <Select.Option value="real_estate">Недвижимость</Select.Option>
-            <Select.Option value="auto">Авто</Select.Option>
+            {Object.entries(CATEGORIES).map(([k, v]) => (
+              <Select.Option key={k} value={k}>
+                {v}
+              </Select.Option>
+            ))}
           </Select>
         </Form.Item>
 
-        <Divider style={{ margin: "24px 0" }} />
-
-        {/* Название */}
         <Form.Item
           label="Название"
           name="title"
-          required
-          tooltip="Введите краткое название товара"
+          rules={[{ required: true, message: "Обязательно" }]}
         >
-          <Input placeholder="MacBook Pro 16" allowClear />
+          <Input placeholder="Название товара" allowClear />
         </Form.Item>
 
-        {/* Цена */}
-        <Form.Item label="Цена" required>
+        <Form.Item label="Цена">
           <Space align="start">
-            <Form.Item name="price" noStyle>
+            <Form.Item
+              name="price"
+              noStyle
+              rules={[{ required: true, message: "Укажите цену" }]}
+            >
               <InputNumber
                 style={{ width: 400 }}
-                placeholder="64000"
-                formatter={(value) =>
-                  `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+                placeholder="0"
+                formatter={(val) =>
+                  `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
                 }
-                parser={(value) => value!.replace(/\s?|/g, "")}
+                parser={(val) => val!.replace(/\s?|/g, "")}
               />
             </Form.Item>
-            <Button
-              type="text"
-              icon={<BulbOutlined />}
-              style={{
-                backgroundColor: "#FFF7E6",
-                color: "#D48806",
-                borderRadius: 6,
-              }}
-              loading={isPriceAiLoading} // Добавляем лоадер
-              onClick={handlePriceAiClick} // Привязываем клик
+
+            {/* AI кнопка для Цены */}
+            <Popover
+              content={
+                <AiResultPopover
+                  status={priceAi.status as "success" | "error"}
+                  suggestion={priceAi.suggestion}
+                  onApply={priceAi.handleApply}
+                  onClose={() => priceAi.setVisible(false)}
+                  maxWidth={350}
+                  preserveLineBreaks={true}
+                />
+              }
+              open={priceAi.visible}
+              trigger="click"
+              placement="bottomRight"
+              overlayInnerStyle={
+                priceAi.status === "error" ? { backgroundColor: "#FEE8E7" } : {}
+              }
+              overlayClassName={
+                priceAi.status === "error" ? "ai-error-popover" : ""
+              }
             >
-              Узнать рыночную цену
-            </Button>
+              <AiButton
+                loading={priceAi.status === "loading"}
+                label={
+                  priceAi.status === "loading"
+                    ? "Выполняется запрос"
+                    : priceAi.status === "idle"
+                      ? "Узнать рыночную цену"
+                      : "Повторить запрос"
+                }
+                onClick={priceAi.handleAction}
+              />
+            </Popover>
           </Space>
         </Form.Item>
 
-        <Divider style={{ margin: "24px 0" }} />
-
-        <Title level={4} style={{ marginBottom: 20 }}>
-          Характеристики
-        </Title>
-
-        {/* Динамические поля */}
-        <div>
-          {category === "electronics" && <CategoryFields.Electronics />}
-          {category === "auto" && <CategoryFields.Auto />}
-          {category === "real_estate" && <CategoryFields.RealEstateFields />}
+        <Title level={4}>Характеристики</Title>
+        <div style={{ marginBottom: 24 }}>
+          {category === "electronics" && <CategoryFieldsElectronics />}
+          {category === "auto" && <CategoryFieldsAuto />}
+          {category === "real_estate" && <CategoryFieldsRealEstate />}
         </div>
 
-        <Divider style={{ margin: "24px 0" }} />
-
         {/* Описание */}
-        <Form.Item label="Описание" name="description">
+        <Form.Item
+          label="Описание"
+          name="description"
+          validateStatus={!descriptionValue ? "warning" : ""}
+        >
           <TextArea
             rows={4}
-            placeholder="Введите описание товара..."
-            maxLength={1000}
             showCount
+            maxLength={1000}
+            placeholder="Введите описание..."
           />
         </Form.Item>
 
-        <Button
-          type="text"
-          icon={<BulbOutlined />}
-          style={{
-            backgroundColor: "#FFF7E6",
-            color: "#D48806",
-            borderRadius: 6,
-            marginBottom: 24,
-          }}
-          onClick={handleAiClick}
+        {/* AI кнопка для Описания */}
+        <Popover
+          content={
+            <AiResultPopover
+              status={ai.status as "success" | "error"}
+              suggestion={ai.suggestion}
+              onClose={() => ai.setVisible(false)}
+              onApply={ai.handleApply}
+              maxWidth={300}
+              preserveLineBreaks={false}
+            />
+          }
+          open={ai.visible}
+          trigger="click"
+          placement="bottomLeft"
+          overlayInnerStyle={
+            ai.status === "error" ? { backgroundColor: "#FEE8E7" } : {}
+          }
+          className={ai.status === "error" ? "ai-error-popover" : ""}
         >
-          Улучшить описание
-        </Button>
+          <AiButton
+            loading={ai.status === "loading"}
+            label={
+              ai.status === "loading"
+                ? "Выполняется запрос"
+                : ai.status === "idle"
+                  ? descriptionValue
+                    ? "Улучшить описание"
+                    : "Придумать описание"
+                  : "Повторить запрос"
+            }
+            onClick={ai.handleAction}
+          />
+        </Popover>
 
-        {/* Кнопки действий */}
-        <Form.Item>
+        <Form.Item style={{ marginTop: 32 }}>
           <Space size={12}>
             <Button
               type="primary"
               htmlType="submit"
               size="large"
-              style={{ borderRadius: 8, padding: "0 32px" }}
               loading={mutation.isPending}
+              style={{ padding: "0 32px", borderRadius: 8 }}
             >
               Сохранить
             </Button>
             <Button
               size="large"
-              style={{ borderRadius: 8, padding: "0 32px" }}
               onClick={() => navigate(`/ads/${id}`)}
+              style={{ borderRadius: 8 }}
             >
               Отменить
             </Button>
           </Space>
         </Form.Item>
       </Form>
-
-      <Modal
-        title="Улучшенное описание"
-        open={isModalOpen}
-        onOk={() => {
-          form.setFieldValue("description", aiSuggestion);
-          setIsModalOpen(false);
-        }}
-        onCancel={() => setIsModalOpen(false)}
-        okText="Применить изменения"
-        width={800}
-      >
-        <div style={{ display: "flex", gap: 20 }}>
-          <div style={{ flex: 1 }}>
-            <h4>Было:</h4>
-            <p>{form.getFieldValue("description")}</p>
-          </div>
-          <div style={{ flex: 1, backgroundColor: "#f6ffed", padding: 10 }}>
-            <h4>Стало:</h4>
-            <p>{aiSuggestion}</p>
-          </div>
-        </div>
-      </Modal>
     </MainLayout>
   );
 };

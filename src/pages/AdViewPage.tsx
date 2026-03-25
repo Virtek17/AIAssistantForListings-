@@ -3,38 +3,34 @@ import {
   Typography,
   Row,
   Col,
-  Alert,
-  Descriptions,
   Result,
   Button,
+  Space,
+  Spin,
 } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
 import { AdViewHeader } from "../components/AdViewHeader";
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getAdById } from "../api";
-import { PARAM_LABELS, VALUE_LABELS } from "../utils/constants";
-import { getMissingFields } from "../utils/getMissingFields";
+import { BackButton } from "../components/BackButton";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "../components/MainLayout";
+import { useAdDetails } from "../features/ad-view/hooks/useAdDetails";
+import { AdViewSkeleton } from "../features/ad-view/components/AdViewSkeleton";
+import { AdParams } from "../features/ad-view/components/AdParams";
+import { AdRevisionAlert } from "../features/ad-view/components/AdRevisionAlert";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph } = Typography;
 
 export const AdViewPage = () => {
-  const { id } = useParams<{ id: string }>();
-  const idNumber = Number(id);
-
+  const navigate = useNavigate();
   const {
     data: item,
     isLoading,
     isError,
+    isFetching,
     refetch,
-  } = useQuery({
-    queryKey: ["ad", id],
-    queryFn: () => getAdById(idNumber!),
-    enabled: !!id,
-  });
+    missingFields,
+  } = useAdDetails();
 
-  if (isLoading) return <div>Загрузка...</div>;
+  if (isLoading) return <AdViewSkeleton />;
 
   if (isError)
     return (
@@ -52,119 +48,68 @@ export const AdViewPage = () => {
 
   return (
     <MainLayout>
-      <AdViewHeader item={item} />
+      <Spin spinning={isFetching}>
+        <Space style={{ marginBottom: 24 }}>
+          <BackButton label="Назад к списку" onClick={() => navigate("/ads")} />
+        </Space>
 
-      <Divider style={{ borderColor: "#E8E8E8", margin: "32px 0" }} />
+        <AdViewHeader item={item} />
 
-      <Row gutter={[48, 32]}>
-        {/* Левая колонка: Изображение и Описание */}
-        <Col xs={24} lg={10}>
-          <div
-            style={{
-              backgroundColor: "#F0F0F0",
-              borderRadius: 12,
-              fontSize: 96,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              aspectRatio: "4/3",
-              marginBottom: 32,
-            }}
-          >
-            🖼️
-          </div>
+        <Divider style={{ borderColor: "#E8E8E8", margin: "32px 0" }} />
 
-          <div style={{ maxWidth: 480 }}>
-            <Title level={3} style={{ fontSize: 22, marginBottom: 16 }}>
-              Описание
-            </Title>
-            <Paragraph
+        <Row gutter={[48, 32]}>
+          {/* Левая колонка: Изображение и Описание */}
+          <Col xs={24} lg={10}>
+            <div
               style={{
-                fontSize: 16,
-                lineHeight: "1.6",
-                color: "#1E1E1E",
+                backgroundColor: "#F0F0F0",
+                borderRadius: 12,
+                fontSize: 96,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                aspectRatio: "4/3",
+                marginBottom: 32,
               }}
             >
-              {item?.description || "Отсутсвует"}
-            </Paragraph>
-          </div>
-        </Col>
+              🖼️
+            </div>
 
-        {/* Правая колонка: Доработки и Характеристики */}
-        <Col xs={24} lg={14}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-            {/* Блок доработок */}
-            {item?.needsRevision && (
-              <Alert
-                title={
-                  <Text strong style={{ fontSize: 16, color: "#1E1E1E" }}>
-                    Требуются доработки
-                  </Text>
-                }
-                description={
-                  <div style={{ marginTop: 4 }}>
-                    <Text style={{ fontSize: 14 }}>
-                      У объявления есть незаполненные поля:
-                    </Text>
-                    <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-                      {getMissingFields(item).map((field) => (
-                        <li key={field} style={{ fontSize: 14 }}>
-                          {field}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                }
-                type="warning"
-                showIcon
-                icon={<InfoCircleOutlined style={{ marginTop: 4 }} />}
-                style={{
-                  backgroundColor: "#F9F1E6",
-                  border: "none",
-                  borderRadius: 8,
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-                }}
-              />
-            )}
-
-            {/* Характеристики */}
-            <div>
-              <Title level={3} style={{ fontSize: 22, marginBottom: 20 }}>
-                Характеристики
+            <div style={{ maxWidth: 480 }}>
+              <Title level={3} style={{ fontSize: 22, marginBottom: 16 }}>
+                Описание
               </Title>
-              <Descriptions
-                column={1}
-                colon={false}
-                labelStyle={{
+              <Paragraph
+                style={{
                   fontSize: 16,
-                  fontWeight: 600,
-                  color: "rgba(0, 0, 0, 0.45)",
-                  width: "100px",
-                }}
-                contentStyle={{
-                  fontSize: 16,
-                  fontWeight: 400,
+                  lineHeight: "1.6",
                   color: "#1E1E1E",
                 }}
               >
-                {item?.params &&
-                  Object.entries(item.params).map(([key, value]) => {
-                    if (value === undefined || value === null || value === "")
-                      return null;
-                    return (
-                      <Descriptions.Item
-                        key={key}
-                        label={PARAM_LABELS[key] || key}
-                      >
-                        {VALUE_LABELS[value] || value}
-                      </Descriptions.Item>
-                    );
-                  })}
-              </Descriptions>
+                {item?.description || "Отсутсвует"}
+              </Paragraph>
             </div>
-          </div>
-        </Col>
-      </Row>
+          </Col>
+
+          {/* Правая колонка: Доработки и Характеристики */}
+          <Col xs={24} lg={14}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              {/* Блок доработок */}
+              {item?.needsRevision && (
+                <AdRevisionAlert fields={missingFields} />
+              )}
+
+              {/* Характеристики */}
+              <div>
+                <Title level={3} style={{ fontSize: 22, marginBottom: 20 }}>
+                  Характеристики
+                </Title>
+                <AdParams params={item?.params} />
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </Spin>
     </MainLayout>
   );
 };

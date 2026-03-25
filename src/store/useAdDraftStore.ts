@@ -1,22 +1,22 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface DraftState {
-  drafts: Record<string, any>;
-  setDraft: (id: string, data: any) => void;
+  drafts: Record<string, unknown>;
+  setDraft: (id: string, data: unknown) => void;
   clearDraft: (id: string) => void;
-  getDraft: (id: string) => any | null;
+  getDraft: (id: string) => unknown | null;
 }
 
 export const useAdDraftStore = create<DraftState>()(
   persist(
     (set, get) => ({
       drafts: {},
-      setDraft: (id, data) => 
+      setDraft: (id, data) =>
         set((state) => ({
-          drafts: { ...state.drafts, [id]: data }
+          drafts: { ...state.drafts, [id]: data },
         })),
-      clearDraft: (id) => 
+      clearDraft: (id) =>
         set((state) => {
           const newDrafts = { ...state.drafts };
           delete newDrafts[id];
@@ -25,7 +25,7 @@ export const useAdDraftStore = create<DraftState>()(
       getDraft: (id) => get().drafts[id] || null,
     }),
     {
-      name: 'ad-drafts-storage', 
-    }
-  )
+      name: "ad-drafts-storage",
+    },
+  ),
 );

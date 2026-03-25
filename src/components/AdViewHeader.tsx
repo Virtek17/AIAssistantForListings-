@@ -1,12 +1,16 @@
-import { Typography, Button, Space } from "antd";
+import { Typography, Button } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import type { AdItem } from "../api/index";
 const { Title, Text } = Typography;
 
 import { formatDate } from "../utils/formatDate";
+import { formatCurrency } from "../utils/formatCurrency";
 
-export const AdViewHeader = ({ item }: { item?: any }) => {
+export const AdViewHeader = ({ item }: { item?: AdItem }) => {
   const navigate = useNavigate();
+
+  const hasBeenUpdated = item?.updatedAt && item.updatedAt !== item.createdAt;
 
   return (
     <div style={{ marginBottom: 32 }}>
@@ -39,7 +43,7 @@ export const AdViewHeader = ({ item }: { item?: any }) => {
             color: "rgba(0, 0, 0, 0.85)",
           }}
         >
-          {item?.price?.toLocaleString() || 0} ₽
+          {formatCurrency(item?.price)}
         </Title>
       </div>
 
@@ -84,15 +88,18 @@ export const AdViewHeader = ({ item }: { item?: any }) => {
           >
             Опубликовано: {formatDate(item?.createdAt || "—")}
           </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              color: "#848388",
-              fontWeight: 400,
-            }}
-          >
-            Отредактировано: {formatDate(item?.updatedAt || "—")}
-          </Text>
+
+          {hasBeenUpdated && (
+            <Text
+              style={{
+                fontSize: 16,
+                color: "#848388",
+                fontWeight: 400,
+              }}
+            >
+              Отредактировано: {formatDate(item?.updatedAt || "—")}
+            </Text>
+          )}
         </div>
       </div>
     </div>

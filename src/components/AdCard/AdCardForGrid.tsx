@@ -1,11 +1,13 @@
 import { Typography } from "antd";
-import { CATEGORY_LABELS, type Category } from "../api/index.ts";
+import { CATEGORY_LABELS, type Category } from "../../api/index";
 import { useNavigate } from "react-router-dom";
+import { formatCurrency } from "../../utils/formatCurrency";
+import { RevisionBadge } from "../RevisionBadge";
 
 const { Text, Title } = Typography;
 
 interface AdCardProps {
-  id: number;
+  id: string | number;
   title: string;
   category: Category;
   price: number;
@@ -13,7 +15,7 @@ interface AdCardProps {
   image?: string;
 }
 
-export const AdCard = ({
+export const AdCardForGrid = ({
   id,
   title,
   category,
@@ -108,29 +110,10 @@ export const AdCard = ({
             margin: "0 0 4px 0",
           }}
         >
-          {price.toLocaleString()} ₽
+          {formatCurrency(price)}
         </Title>
 
-        {needsRevision && (
-          <div
-            style={{
-              marginTop: "auto",
-              padding: "4px 10px",
-              backgroundColor: "#FFF7E6",
-              color: "#FAAD14",
-              fontSize: 14,
-              fontWeight: 400,
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              width: "fit-content",
-            }}
-          >
-            <div style={{ fontSize: 20, lineHeight: 0 }}>•</div>
-            Требует доработок
-          </div>
-        )}
+        {needsRevision && <RevisionBadge />}
       </div>
     </div>
   );

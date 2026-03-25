@@ -1,7 +1,12 @@
-import { Layout } from "antd";
+import { Layout, type LayoutProps } from "antd";
 import { Content } from "antd/es/layout/layout";
+import type { ReactNode } from "react";
 
-export const MainLayout = ({ children }: any) => {
+interface MainLayoutProps extends LayoutProps {
+  children: ReactNode;
+}
+
+export const MainLayout = ({ children }: MainLayoutProps) => {
   return (
     <Layout
       style={{
